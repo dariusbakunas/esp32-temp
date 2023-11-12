@@ -65,3 +65,25 @@ menu "WiFi Configuration"
     endchoice
 
 endmenu
+
+menu "MQTT Configuration"
+
+    config ESP_BROKER_URL
+        string "Broker URL"
+        default "mqtt://mqtt.eclipseprojects.io"
+        help
+            URL of the broker to connect to
+
+    config ESP_MQTT_USERNAME
+            string "MQTT Username"
+            default "iot"
+            help
+                MQTT client username.
+
+    config ESP_MQTT_PASSWORD
+            string "MQTT Password"
+            default "mypassword"
+            help
+                MQTT client password.
+
+endmenu
