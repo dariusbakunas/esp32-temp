@@ -21,7 +21,6 @@ void app_main(void)
     ESP_LOGI(TAG, "[APP] IDF version: %s", esp_get_idf_version());
 
     esp_log_level_set("*", ESP_LOG_INFO);
-    esp_log_level_set("MQTT5", ESP_LOG_DEBUG);
 
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -30,8 +29,7 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-
-    wifi_init_sta();
+    ESP_ERROR_CHECK(wifi_init_sta());
     ESP_ERROR_CHECK(mqtt5_init());
     ESP_ERROR_CHECK(dht_init());
 }

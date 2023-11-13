@@ -31,7 +31,7 @@ static void event_handler(void* args, esp_event_base_t base,
     }
 }
 
-void wifi_init_sta(void)
+esp_err_t wifi_init_sta(void)
 {
     s_wifi_event_group = xEventGroupCreate();
 
@@ -97,4 +97,6 @@ void wifi_init_sta(void)
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
+
+    return ESP_OK;
 }

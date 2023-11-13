@@ -36,6 +36,6 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-void wifi_init_sta(void);
+esp_err_t wifi_init_sta(void);
 
 #endif // __WIFI_H__
