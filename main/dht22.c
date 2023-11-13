@@ -173,6 +173,7 @@ _Noreturn static void dht_reader_task(void *pvParameter)
 
         if (err != ESP_OK) {
             errorHandler(err);
+            vTaskDelay(pdMS_TO_TICKS(5000));
             continue;
         }
 
@@ -188,7 +189,7 @@ _Noreturn static void dht_reader_task(void *pvParameter)
             ESP_LOGW(TAG, "dht_reader_task(): Failed to send the message");
         }
 
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 

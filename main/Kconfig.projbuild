@@ -74,6 +74,18 @@ menu "MQTT Configuration"
         help
             URL of the broker to connect to
 
+    config ESP_MQTT_TOPIC_TEMPERATURE
+            string "Temperature topic to publish to"
+            default "dt/hub/barn/esp32dhtA/temperature"
+            help
+                Temperature topic to publish to
+
+    config ESP_MQTT_TOPIC_HUMIDITY
+            string "Humidity topic to publish to"
+            default "dt/hub/barn/esp32dhtA/humidity"
+            help
+                Humidity topic to publish to
+
     config ESP_MQTT_USERNAME
             string "MQTT Username"
             default "iot"

@@ -1,9 +1,13 @@
 #ifndef __MQTT_H__
 #define __MQTT_H__
 
-#define ESP_MQTT_USERNAME       CONFIG_ESP_MQTT_USERNAME
-#define ESP_MQTT_PASSWORD       CONFIG_ESP_MQTT_PASSWORD
+#include <esp_err.h>
 
-void mqtt5_init(void);
+#define ESP_MQTT_USERNAME           CONFIG_ESP_MQTT_USERNAME
+#define ESP_MQTT_PASSWORD           CONFIG_ESP_MQTT_PASSWORD
+#define ESP_MQTT_TOPIC_TEMPERATURE  CONFIG_ESP_MQTT_TOPIC_TEMPERATURE
+#define ESP_MQTT_TOPIC_HUMIDITY     CONFIG_ESP_MQTT_TOPIC_HUMIDITY
+
+esp_err_t mqtt5_init(void);
 
 #endif // __MQTT_H__

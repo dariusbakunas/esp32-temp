@@ -32,7 +32,6 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     wifi_init_sta();
-    mqtt5_init();
-
+    ESP_ERROR_CHECK(mqtt5_init());
     ESP_ERROR_CHECK(dht_init());
 }

@@ -2,6 +2,7 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "mqtt_client.h"
+#include "dht22.h"
 
 static const char *TAG = "MQTT5";
 
@@ -12,6 +13,8 @@ static esp_mqtt5_user_property_item_t user_property_arr[] = {
 };
 
 #define USE_PROPERTY_ARR_SIZE   sizeof(user_property_arr)/sizeof(esp_mqtt5_user_property_item_t)
+
+static TaskHandle_t mqtt_task_handle = NULL;
 
 /*
  * @brief Event handler registered to receive MQTT events
@@ -33,12 +36,17 @@ static void event_handler(void *args, esp_event_base_t base, int32_t event_id, v
     ESP_LOGD(TAG, "free heap size is %" PRIu32 ", minimum %" PRIu32, esp_get_free_heap_size(), esp_get_minimum_free_heap_size());
     switch ((esp_mqtt_event_id_t)event_id) {
         case MQTT_EVENT_CONNECTED:
+            ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+            vTaskResume(mqtt_task_handle);
             break;
         case MQTT_EVENT_ANY:
             break;
         case MQTT_EVENT_ERROR:
+            ESP_LOGE(TAG, "MQTT_EVENT_ERROR");
             break;
         case MQTT_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+            vTaskSuspend(mqtt_task_handle);
             break;
         case MQTT_EVENT_SUBSCRIBED:
             break;
@@ -60,7 +68,43 @@ static void event_handler(void *args, esp_event_base_t base, int32_t event_id, v
     }
 }
 
-void mqtt5_init(void) {
+static inline bool is_queue_created(QueueHandle_t queue)
+{
+    return queue != NULL ? true : false;
+}
+
+static const char* float_to_string(float number, char *string)
+{
+    sprintf(string, "%.2f", number);
+    return string;
+}
+
+static void mqtt_task(void *params)
+{
+    while (true) {
+        if (is_queue_created(dht_reading_queue)) {
+            dht_reading_t received_value;
+
+            BaseType_t status = xQueueReceive(dht_reading_queue, &received_value, portMAX_DELAY);
+            if (status == pdPASS) {
+                const esp_mqtt_client_handle_t client = *(esp_mqtt_client_handle_t*)params;
+                char string[20];  // 20 - maximum number of characters for a float: -[sign][d].[d...]e[sign]d
+                ESP_LOGI(TAG, "Publish humidity: %.2f, temperature: %.2f", received_value.humidity, received_value.temperature);
+                esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_HUMIDITY,
+                                        float_to_string(received_value.humidity, string), 0, 1, 0);
+                esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_TEMPERATURE,
+                                        float_to_string(received_value.temperature, string), 0, 1, 0);
+            } else {
+                ESP_LOGE(TAG, "mqtt_task(): Failed to receive the message from the dht_reading_queue");
+            }
+        } else {
+            ESP_LOGE(TAG, "The dht_reading_queue has not been created yet");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+    }
+}
+
+esp_err_t mqtt5_init(void) {
     esp_mqtt5_connection_property_config_t connect_property = {
             .session_expiry_interval = 10,
             .maximum_packet_size = 1024,
@@ -86,7 +130,9 @@ void mqtt5_init(void) {
             .session.last_will.retain = true,
     };
 
-    esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt5_cfg);
+    // NOTE: The parameter "client" must still exist when the created task executes. It must be static.
+    static esp_mqtt_client_handle_t client;
+    client = esp_mqtt_client_init(&mqtt5_cfg);
 
     /* Set connection properties and user properties */
     esp_mqtt5_client_set_user_property(&connect_property.user_property, user_property_arr, USE_PROPERTY_ARR_SIZE);
@@ -100,6 +146,19 @@ void mqtt5_init(void) {
     esp_mqtt5_client_delete_user_property(connect_property.will_user_property);
 
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
-    esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, event_handler, NULL);
-    esp_mqtt_client_start(client);
+    ESP_ERROR_CHECK(esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, event_handler, NULL));
+    ESP_ERROR_CHECK(esp_mqtt_client_start(client));
+
+    BaseType_t status = xTaskCreate(mqtt_task, "mqtt_task", configMINIMAL_STACK_SIZE * 4, &client, 3,
+                                    &mqtt_task_handle);
+
+    if (status != pdPASS) {
+        ESP_LOGE(TAG, "mqtt_task(): Task was not created. Could not allocate required memory");
+        return ESP_ERR_NO_MEM;
+    }
+
+    vTaskSuspend(mqtt_task_handle);
+    ESP_LOGI(TAG, "mqtt_init() finished successfully");
+
+    return ESP_OK;
 }
