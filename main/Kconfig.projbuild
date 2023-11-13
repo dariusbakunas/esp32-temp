@@ -87,3 +87,11 @@ menu "MQTT Configuration"
                 MQTT client password.
 
 endmenu
+
+menu "DHT Configuration"
+    config ESP_DHT_GPIO_PIN
+        int "DHT GPIO pin"
+        default 1
+        help
+            GPIO pin that is connected to DHT sensor
+endmenu

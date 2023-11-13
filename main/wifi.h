@@ -38,4 +38,4 @@
 
 void wifi_init_sta(void);
 
-#endif
+#endif // __WIFI_H__
