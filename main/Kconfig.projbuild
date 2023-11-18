@@ -86,6 +86,18 @@ menu "MQTT Configuration"
             help
                 Humidity topic to publish to
 
+    config ESP_MQTT_TOPIC_BATTERY_VOLTAGE
+            string "Battery voltage topic to publish to"
+            default "dt/hub/barn/esp32dhtA/battery_voltage"
+            help
+                Battery voltage topic to publish to
+
+    config ESP_MQTT_TOPIC_BATTERY_SOC
+            string "Battery state of charge topic to publish to"
+            default "dt/hub/barn/esp32dhtA/battery_soc"
+            help
+                Battery state of charge topic to publish to
+
     config ESP_MQTT_USERNAME
             string "MQTT Username"
             default "iot"
