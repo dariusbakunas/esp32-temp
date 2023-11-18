@@ -21,4 +21,11 @@
 
 esp_err_t battery_init(void);
 
+extern QueueHandle_t battery_reading_queue;
+
+typedef struct {
+    float voltage;
+    float soc;
+} battery_reading_t;
+
 #endif

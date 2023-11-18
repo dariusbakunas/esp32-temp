@@ -4,6 +4,7 @@
 #include "esp_event.h"
 #include "mqtt_client.h"
 #include "dht22.h"
+#include "battery.h"
 
 static const char *TAG = "MQTT5";
 
@@ -83,29 +84,51 @@ static const char* float_to_string(float number, char *string)
 _Noreturn static void mqtt_task(void *params)
 {
     while (true) {
-        if (is_queue_created(dht_reading_queue)) {
-            dht_reading_t received_value;
-
-            BaseType_t status = xQueueReceive(dht_reading_queue, &received_value, portMAX_DELAY);
-            if (status == pdPASS) {
-                const esp_mqtt_client_handle_t client = *(esp_mqtt_client_handle_t*)params;
-                char string[20];  // 20 - maximum number of characters for a float: -[sign][d].[d...]e[sign]d
-                ESP_LOGD(TAG, "Publish humidity: %.2f, temperature: %.2f", received_value.humidity, received_value.temperature);
-                esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_HUMIDITY,
-                                        float_to_string(received_value.humidity, string), 0, 1, 1);
-                esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_TEMPERATURE,
-                                        float_to_string(received_value.temperature, string), 0, 1, 1);
-            } else {
-                ESP_LOGE(TAG, "mqtt_task(): Failed to receive the message from the dht_reading_queue");
-            }
-        } else {
+        if (!is_queue_created(dht_reading_queue)) {
             ESP_LOGE(TAG, "The dht_reading_queue has not been created yet");
             vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        if (!is_queue_created(battery_reading_queue)) {
+            ESP_LOGE(TAG, "The battery_reading_queue has not been created yet");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        dht_reading_t dht_reading;
+        battery_reading_t battery_reading;
+
+        const esp_mqtt_client_handle_t client = *(esp_mqtt_client_handle_t*)params;
+
+        BaseType_t dht_status = xQueueReceive(dht_reading_queue, &dht_reading, portMAX_DELAY);
+        if (dht_status == pdPASS) {
+            char string[20];  // 20 - maximum number of characters for a float: -[sign][d].[d...]e[sign]d
+            ESP_LOGD(TAG, "Publish humidity: %.2f, temperature: %.2f", dht_reading.humidity, dht_reading.temperature);
+            esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_HUMIDITY,
+                                    float_to_string(dht_reading.humidity, string), 0, 1, 1);
+            esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_TEMPERATURE,
+                                    float_to_string(dht_reading.temperature, string), 0, 1, 1);
+        } else {
+            ESP_LOGE(TAG, "mqtt_task(): Failed to receive the message from the dht_reading_queue");
+        }
+
+        BaseType_t battery_status = xQueueReceive(battery_reading_queue, &battery_reading, portMAX_DELAY);
+        if (battery_status == pdPASS) {
+            char string[20];  // 20 - maximum number of characters for a float: -[sign][d].[d...]e[sign]d
+            ESP_LOGD(TAG, "Publish voltage: %.2f, SOC: %.2f%%", battery_reading.voltage, battery_reading.soc);
+            esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_BATTERY_VOLTAGE,
+                                    float_to_string(battery_reading.voltage, string), 0, 1, 1);
+            esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_BATTERY_SOC,
+                                    float_to_string(battery_reading.soc, string), 0, 1, 1);
+        } else {
+            ESP_LOGE(TAG, "mqtt_task(): Failed to receive the message from the battery_reading_queue");
         }
     }
 }
 
 esp_err_t mqtt5_init(void) {
+    ESP_LOGI(TAG, "Init");
     esp_mqtt5_connection_property_config_t connect_property = {
             .session_expiry_interval = 10,
             .maximum_packet_size = 1024,

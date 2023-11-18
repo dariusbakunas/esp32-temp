@@ -11,6 +11,7 @@
 #include "mqtt.h"
 #include "dht22.h"
 #include "driver/gpio.h"
+#include "battery.h"
 
 static const char *TAG = "TempSensor";
 
@@ -32,4 +33,5 @@ void app_main(void)
     ESP_ERROR_CHECK(wifi_init_sta());
     ESP_ERROR_CHECK(mqtt5_init());
     ESP_ERROR_CHECK(dht_init());
+    ESP_ERROR_CHECK(battery_init());
 }

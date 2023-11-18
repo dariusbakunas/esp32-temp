@@ -1,9 +1,12 @@
 #include "driver/i2c_master.h"
+#include "freertos/FreeRTOS.h"
 #include <esp_log.h>
 
 #include "battery.h"
 
 static const char *TAG = "BATTERY";
+
+QueueHandle_t battery_reading_queue = NULL;
 
 i2c_master_dev_handle_t dev_handle;
 
@@ -58,8 +61,52 @@ esp_err_t read_soc(float* percent) {
     return ESP_OK;
 }
 
+_Noreturn static void battery_reader_task(void *pvParameter) {
+    while(true) {
+        esp_err_t err;
+        float voltage;
+        float soc;
+
+        err = read_voltage(&voltage);
+
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed reading voltage");
+            continue;
+        }
+
+        err = read_soc(&soc);
+
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed reading soc");
+            continue;
+        }
+
+        ESP_LOGI(TAG, "Voltage: %.2f, SOC: %.2f%%", voltage, soc);
+
+        battery_reading_t reading = {
+                .voltage = voltage,
+                .soc = soc,
+        };
+
+        BaseType_t status = xQueueSend(battery_reading_queue, &reading, 0);
+
+        if (status != pdPASS) {
+            ESP_LOGW(TAG, "battery_reader_task(): Failed to send the message");
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(5000));
+    }
+}
+
 esp_err_t battery_init(void) {
+    ESP_LOGI(TAG, "Init");
     int i2c_master_port = I2C_MASTER_NUM;
+    battery_reading_queue = xQueueCreate(10, sizeof(battery_reading_t));
+
+    if (battery_reading_queue == NULL) {
+        ESP_LOGE(TAG, "battery_reading_queue: Queue was not created. Could not allocate required memory");
+        return ESP_ERR_NO_MEM;
+    }
 
     i2c_master_bus_config_t i2c_mst_config = {
             .clk_source = I2C_CLK_SRC_DEFAULT,
@@ -109,12 +156,20 @@ esp_err_t battery_init(void) {
 
         ESP_ERROR_CHECK(read_soc( &soc));
         ESP_LOGI(TAG, "Battery SOC: %.2f%%", soc);
+
+        BaseType_t status = xTaskCreate(battery_reader_task, "battery_reader_task", configMINIMAL_STACK_SIZE * 4, NULL,
+                                        4, NULL);
+
+        if (status != pdPASS) {
+            ESP_LOGE(TAG, "battery_reader_task(): Task was not created. Could not allocate required memory");
+            return ESP_ERR_NO_MEM;
+        }
     } else {
         ESP_LOGE(TAG, "Battery monitor not found");
     }
 
-    ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
-    ESP_ERROR_CHECK(i2c_del_master_bus(bus_handle));
+    //ESP_ERROR_CHECK(i2c_master_bus_rm_device(dev_handle));
+    //ESP_ERROR_CHECK(i2c_del_master_bus(bus_handle));
 
     return ESP_OK;
 }

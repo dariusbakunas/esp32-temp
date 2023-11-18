@@ -194,6 +194,7 @@ _Noreturn static void dht_reader_task(void *pvParameter)
 }
 
 esp_err_t dht_init(void) {
+    ESP_LOGI(TAG, "Init");
     dht_reading_queue = xQueueCreate(10, sizeof(dht_reading_t));
     if (dht_reading_queue == NULL) {
         ESP_LOGE(TAG, "dht_reading_queue: Queue was not created. Could not allocate required memory");
