@@ -30,6 +30,34 @@ esp_err_t read_16(uint8_t address, uint16_t* result) {
     return success ? ESP_OK : ESP_ERR_INVALID_ARG;
 }
 
+esp_err_t read_voltage(float* voltage) {
+    uint16_t buffer = 0;
+    esp_err_t err = read_16(MAX17048_VCELL, &buffer);
+
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    float _full_scale = 5.12f; // specific to MAX17048
+    float divider = 65536.0f / _full_scale;
+    *voltage = (((float)buffer) / divider);
+    return ESP_OK;
+}
+
+esp_err_t read_soc(float* percent) {
+    uint16_t buffer = 0;
+    esp_err_t err = read_16(MAX17048_SOC, &buffer);
+
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    *percent = (float)((buffer & 0xFF00) >> 8);
+    *percent += ((float)(buffer & 0x00FF)) / 256.0f;
+
+    return ESP_OK;
+}
+
 esp_err_t battery_init(void) {
     int i2c_master_port = I2C_MASTER_NUM;
 
@@ -65,20 +93,22 @@ esp_err_t battery_init(void) {
         } else {
             retries--;
             ESP_LOGW(TAG, "Battery monitor not connected, retrying...");
-            esp_rom_delay_us( 500 );
+            esp_rom_delay_us( 1000 );
         }
     }
 
     if (success) {
         uint16_t version = 0;
-        uint16_t voltage = 0;
-        ESP_ERROR_CHECK(read_16(MAX17043_VERSION_REG_ADDR, &version));
+        float voltage = 0;
+        float soc = 0;
+        ESP_ERROR_CHECK(read_16(MAX17048_VERSION_REG_ADDR, &version));
         ESP_LOGI(TAG, "VERSION = %X", version);
 
-        ESP_ERROR_CHECK(read_16(MAX17043_VCELL, &voltage));
-        float _full_scale = 5.12;
-        float divider = 65536.0 / _full_scale;
-        ESP_LOGI(TAG, "Battery voltage: %f", (((float)voltage) / divider));
+        ESP_ERROR_CHECK(read_voltage( &voltage));
+        ESP_LOGI(TAG, "Battery voltage: %.2fV", voltage);
+
+        ESP_ERROR_CHECK(read_soc( &soc));
+        ESP_LOGI(TAG, "Battery SOC: %.2f%%", soc);
     } else {
         ESP_LOGE(TAG, "Battery monitor not found");
     }

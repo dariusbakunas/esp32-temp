@@ -15,8 +15,9 @@
 
 // All registers contain two bytes of data and span two addresses.
 // Registers which are present on the MAX17048/49 only are prefixed with MAX17048_
-#define MAX17043_VCELL              0x02         /*!< R - 16-bit A/D measurement of battery voltage */
-#define MAX17043_VERSION_REG_ADDR   0x08         /*!< Returns 2 byte version */
+#define MAX17048_VCELL              0x02         /*!< R - 16-bit A/D measurement of battery voltage */
+#define MAX17048_SOC                0x04         /*!< R - 16-bit state of charge (SOC) */
+#define MAX17048_VERSION_REG_ADDR   0x08         /*!< Returns 2 byte version */
 
 esp_err_t battery_init(void);
 
