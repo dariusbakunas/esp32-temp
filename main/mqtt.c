@@ -1,3 +1,4 @@
+#include <sys/cdefs.h>
 #include "mqtt.h"
 #include "esp_log.h"
 #include "esp_event.h"
@@ -79,7 +80,7 @@ static const char* float_to_string(float number, char *string)
     return string;
 }
 
-static void mqtt_task(void *params)
+_Noreturn static void mqtt_task(void *params)
 {
     while (true) {
         if (is_queue_created(dht_reading_queue)) {
@@ -89,11 +90,11 @@ static void mqtt_task(void *params)
             if (status == pdPASS) {
                 const esp_mqtt_client_handle_t client = *(esp_mqtt_client_handle_t*)params;
                 char string[20];  // 20 - maximum number of characters for a float: -[sign][d].[d...]e[sign]d
-                ESP_LOGI(TAG, "Publish humidity: %.2f, temperature: %.2f", received_value.humidity, received_value.temperature);
+                ESP_LOGD(TAG, "Publish humidity: %.2f, temperature: %.2f", received_value.humidity, received_value.temperature);
                 esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_HUMIDITY,
-                                        float_to_string(received_value.humidity, string), 0, 1, 0);
+                                        float_to_string(received_value.humidity, string), 0, 1, 1);
                 esp_mqtt_client_publish(client, CONFIG_ESP_MQTT_TOPIC_TEMPERATURE,
-                                        float_to_string(received_value.temperature, string), 0, 1, 0);
+                                        float_to_string(received_value.temperature, string), 0, 1, 1);
             } else {
                 ESP_LOGE(TAG, "mqtt_task(): Failed to receive the message from the dht_reading_queue");
             }
