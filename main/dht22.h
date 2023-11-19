@@ -2,6 +2,7 @@
 #define __DHT22_H__
 
 #include <stdbool.h>
+#include "freertos/FreeRTOS.h"
 
 #define ESP_DHT_GPIO_PIN       CONFIG_ESP_DHT_GPIO_PIN
 

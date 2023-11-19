@@ -1,7 +1,7 @@
-#include "driver/i2c_master.h"
-#include "freertos/FreeRTOS.h"
 #include <esp_log.h>
 
+#include "freertos/FreeRTOS.h"
+#include "driver/i2c_master.h"
 #include "battery.h"
 
 static const char *TAG = "BATTERY";
